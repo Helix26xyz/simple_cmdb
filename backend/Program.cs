@@ -20,6 +20,15 @@ builder.Services.AddAuthentication("Bearer")
     });
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
@@ -30,6 +39,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Log incoming requests for CORS debugging
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"Request: {context.Request.Method} {context.Request.Path}");
+    if (context.Request.Headers.ContainsKey("Origin"))
+    {
+        Console.WriteLine($"Origin: {context.Request.Headers["Origin"]}");
+    }
+    await next();
+});
+
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
