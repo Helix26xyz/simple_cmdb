@@ -1,0 +1,30 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: storagemigrations
+  labels:
+    app: storagemigrations
+spec:
+  backoffLimit: 0 # Do not retry the job if it fails
+  template:
+    metadata:
+      labels:
+        app: storagemigrations
+    spec:
+      restartPolicy: OnFailure # Restart only if the container fails
+      containers:
+      - name: storagemigrations
+        image: ghcr.io/helix26xyz/simplecmdb-dotnet-storagemigrations:main
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        envFrom:
+        - configMapRef:
+            name: storagemigrations-env
+        - secretRef:
+            name: storagemigrations-secrets
+      terminationGracePeriodSeconds: 180

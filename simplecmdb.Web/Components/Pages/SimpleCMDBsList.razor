@@ -1,0 +1,216 @@
+﻿@page "/"
+@page "/simplecmdb"
+@attribute [StreamRendering(true)]
+@attribute [OutputCache(Duration = 5)]
+@rendermode InteractiveServer
+
+@using simplecmdb.SharedModels.models
+@using simplecmdb.SharedModels.clients
+@inject SimpleCMDBApiClient SimpleCMDBApi
+@inject IJSRuntime JSRuntime
+
+<PageTitle>SimpleCMDBs</PageTitle>
+
+<h3>SimpleCMDBs</h3>
+
+<button class="btn btn-secondary" @onclick="RefreshSimpleCMDBs">Refresh</button>
+<button class="btn btn-primary" @onclick="ToggleNewSimpleCMDBFormVisibility">Add New SimpleCMDB</button>
+
+@if (isNewSimpleCMDBFormVisible)
+{
+    <h4>Add New SimpleCMDB</h4>
+    <EditForm Model="newSimpleCMDB" OnValidSubmit="AddSimpleCMDB">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="name">Name</label>
+            <InputText id="name" class="form-control" @bind-Value="newSimpleCMDB.Name" />
+        </div>
+        <div class="form-group">
+            <label for="slug">Slug</label>
+            <InputText id="slug" class="form-control" @bind-Value="newSimpleCMDB.Slug" />
+        </div>
+        <div class="form-group">
+            <label for="url">Url</label>
+            <InputText id="url" class="form-control" @bind-Value="newSimpleCMDB.Url" />
+        </div>
+        <div class="form-group">
+            <label for="createdBy">Created By</label>
+            <InputText id="createdBy" class="form-control" @bind-Value="newSimpleCMDB.CreatedBy" />
+        </div>
+        <div class="form-group">
+            <label for="owner">Owner</label>
+            <InputText id="owner" class="form-control" @bind-Value="newSimpleCMDB.Owner" />
+        </div>
+        <div class="form-group">
+            <label for="project">Project</label>
+            <InputText id="project" class="form-control" @bind-Value="newSimpleCMDB.Project" />
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <InputSelect id="status" class="form-control" @bind-Value="newSimpleCMDB.Status">
+                <option value="1">Enabled</option>
+                <option value="2">Disabled</option>
+                <option value="3">Suspended</option>
+            </InputSelect>
+        </div>
+        <button type="submit" class="btn btn-primary">Add SimpleCMDB</button>
+    </EditForm>
+}
+@if (simplecmdb == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Url</th>
+                <th>Created At</th>
+                <th>Created By</th>
+                <th>Owner</th>
+                <th>Project</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var webhook in simplecmdb)
+            {
+                <tr>
+                    <td>@webhook.Name</td>
+                    <td>@webhook.Slug</td>
+                    <td>@webhook.Url</td>
+                    <td>@webhook.CreatedAt</td>
+                    <td>@webhook.CreatedBy</td>
+                    <td>@webhook.Owner</td>
+                    <td>@webhook.Project</td>
+                    <td>
+                        <InputSelect placeholder="webhook"
+                        @bind-Value="webhook.Status"
+                                     @bind-Value:after="() => OnSimpleCMDBStatusChange(webhook, __value)">
+                        @foreach (var status in Enum.GetValues<SimpleCMDBStatus>())
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </InputSelect>
+
+
+                    </td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => OnSimpleCMDBClick(webhook)">View Events</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteSimpleCMDB(webhook.Id)">Delete</button>
+                        @if (pendingStatusUpdates.ContainsKey(webhook.Id))
+                        {
+                            <button class="btn btn-success" @onclick="() => UpdateSimpleCMDBStatus(webhook)">Update</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (webhookEvents == null)
+{
+}
+else if (!webhookEvents.Any())
+{
+    <p><em>No events to display.</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>SimpleCMDBId</th>
+                <th>Created At</th>
+                <th>Payload</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var webhookevent in webhookEvents)
+            {
+                <tr>
+                    <td>@webhookevent.Id</td>
+                    <td>@webhookevent.SimpleCMDBId</td>
+                    <td>@webhookevent.CreatedAt</td>
+                    <td>@webhookevent.Payload</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<SimpleCMDB> simplecmdb = new List<SimpleCMDB>();
+    private SimpleCMDB? selectedSimpleCMDB;
+    private List<SimpleCMDBEvent> webhookEvents = new List<SimpleCMDBEvent>();
+    private SimpleCMDB newSimpleCMDB = new SimpleCMDB();
+    private bool isNewSimpleCMDBFormVisible = false;
+    private Dictionary<Guid, SimpleCMDBStatus> pendingStatusUpdates = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSimpleCMDBs();
+    }
+
+    private async Task LoadSimpleCMDBs()
+    {
+        var simplecmdbArray = await SimpleCMDBApi.GetSimpleCMDBsAsync();
+        simplecmdb = simplecmdbArray.ToList();
+    }
+
+    private async Task RefreshSimpleCMDBs()
+    {
+        await LoadSimpleCMDBs();
+        StateHasChanged(); // Ensure the component re-renders
+    }
+
+    private async Task AddSimpleCMDB()
+    {
+        newSimpleCMDB.CreatedAt = DateTime.UtcNow;
+        await SimpleCMDBApi.AddSimpleCMDBAsync(newSimpleCMDB);
+        await LoadSimpleCMDBs();
+        newSimpleCMDB = new SimpleCMDB(); // Reset the form
+        StateHasChanged(); // Ensure the component re-renders
+    }
+    private async Task DeleteSimpleCMDB(Guid webhookId)
+    {
+        await SimpleCMDBApi.DeleteSimpleCMDBAsync(webhookId);
+        await LoadSimpleCMDBs();
+    }
+    private void OnSimpleCMDBStatusChange(SimpleCMDB webhook, SimpleCMDBStatus newStatus)
+    {
+        pendingStatusUpdates[webhook.Id] = newStatus;
+        webhook.Status = newStatus;
+        StateHasChanged(); // Ensure the component re-renders
+    }
+
+    private async Task UpdateSimpleCMDBStatus(SimpleCMDB webhook)
+    {
+        if (pendingStatusUpdates.TryGetValue(webhook.Id, out var newStatus))
+        {
+            webhook.Status = newStatus;
+            await SimpleCMDBApi.UpdateSimpleCMDBAsync(webhook);
+            pendingStatusUpdates.Remove(webhook.Id);
+            StateHasChanged(); // Ensure the component re-renders
+        }
+    }
+    private void ToggleNewSimpleCMDBFormVisibility()
+    {
+        isNewSimpleCMDBFormVisible = !isNewSimpleCMDBFormVisible;
+    }
+    async Task OnSimpleCMDBClick(SimpleCMDB webhook)
+    {
+        selectedSimpleCMDB = webhook;
+        var webhookEventsArray = await SimpleCMDBApi.GetSimpleCMDBEventsForSimpleCMDBAsync(webhook.Id.ToString(), 50);
+        webhookEvents = webhookEventsArray.ToList();
+        StateHasChanged(); // Ensure the component re-renders
+    }
+}

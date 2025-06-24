@@ -1,0 +1,23 @@
+namespace: ns-simplecmdb-env
+
+resources:
+- DefaultConnection
+- storageMigrations
+- apiservice
+- cache
+- webfrontend
+- namespace.yaml
+- dashboard.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+
+transformers:
+  - |-
+    apiVersion: builtin
+    kind: NamespaceTransformer
+    metadata:
+      name: notImportantHere
+      namespace: ns-simplecmdb-env
+    unsetOnly: true
