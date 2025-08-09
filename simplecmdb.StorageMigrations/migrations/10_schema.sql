@@ -66,6 +66,28 @@ BEGIN
     );
 END
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CmdbTypes]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE CmdbTypes (
+        Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        Name NVARCHAR(255) NOT NULL,
+        Description NVARCHAR(MAX) NULL,
+        AttributeSchemaJson NVARCHAR(MAX) NULL
+    );
+END
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CmdbRecords]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE CmdbRecords (
+        Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        CmdbTypeId UNIQUEIDENTIFIER NOT NULL,
+        AttributesJson NVARCHAR(MAX) NOT NULL DEFAULT '{}',
+        CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+        UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+        FOREIGN KEY (CmdbTypeId) REFERENCES CmdbTypes(Id)
+    );
+END
+
 IF NOT EXISTS (SELECT * FROM SimpleCMDBStatus)
 BEGIN
     INSERT INTO SimpleCMDBStatus (Value, Name) VALUES

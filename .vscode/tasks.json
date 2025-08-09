@@ -4,15 +4,22 @@
     {
       "label": "build-backend",
       "type": "shell",
-      "command": "dotnet build backend/backend.csproj",
+      "command": "dotnet build simplecmdb.ApiService/simplecmdb.ApiService.csproj",
       "group": "build",
       "problemMatcher": ["$msCompile"]
     },
     {
       "label": "run-backend",
       "type": "shell",
-      "command": "dotnet run --project backend/backend.csproj",
+      "command": "dotnet run --project simplecmdb.ApiService/simplecmdb.ApiService.csproj",
       "group": "test",
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "build-apphost",
+      "type": "shell",
+      "command": "dotnet build simplecmdb.AppHost/simplecmdb.AppHost.csproj",
+      "group": "build",
       "problemMatcher": ["$msCompile"]
     }
   ]

@@ -1,6 +1,7 @@
 {
     "folders": [
         {
+            "name": "simple_cmdb",
             "path": "."
         }
     ]
